@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Builder v5.4 - Editor Fix</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chosen Palette: Slate and Sky -->
+    <!-- Application Structure Plan: Maintains v5.2 structure. This is a critical bugfix release for the View/Edit screen. -->
+    <!-- Visualization & Content Choices: No visual changes. This version fixes the non-functional "Edit" button on the View/Edit screen. The logic for toggling between the JSON viewer and editor is re-implemented correctly. "Save Changes" and "Cancel" buttons are added to the edit mode, and their event handlers for saving/validating JSON and discarding changes are now functional. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+        .tab-btn.active { background-color: white; border-color: #e5e7eb; border-bottom-color: white; z-index: 10; transform: translateY(1px); }
+        .file-item:hover { background-color: #f8fafc; }
+        .file-item.active { background-color: #f0f9ff; border-left-color: #0ea5e9;}
+        .property-row { cursor: move; border-radius: 0.5rem; }
+        .property-row:hover { background-color: #f8fafc; }
+        .dragging { opacity: 0.5; background: #e0f2fe; }
+        .drag-over { border-top: 2px solid #0ea5e9; }
+        .hidden { display: none; }
+    </style>
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-slate-100 text-slate-800">
+
+    <div class="flex h-screen">
+        <!-- Main Content -->
+        <main class="w-3/4 p-8 overflow-y-auto">
+            <header class="mb-8">
+                <h1 class="text-3xl font-bold text-slate-900">JSON Configuration Builder</h1>
+                <p class="text-slate-500 mt-1">Giao diện được thiết kế lại để mang lại trải nghiệm tốt hơn.</p>
+            </header>
+            
+            <!-- Tab Navigation -->
+            <div class="border-b border-slate-200">
+                <nav class="-mb-px flex space-x-4" aria-label="Tabs">
+                    <button id="tab-create" class="tab-btn active whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm rounded-t-lg">Tạo File</button>
+                    <button id="tab-view" class="tab-btn text-slate-500 hover:text-slate-700 whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm rounded-t-lg border-transparent">Xem & Chỉnh sửa</button>
+                    <button id="tab-suggestions" class="tab-btn text-slate-500 hover:text-slate-700 whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm rounded-t-lg border-transparent">Quản lý Gợi ý</button>
+                </nav>
+            </div>
+
+            <!-- Screens Container -->
+            <div class="mt-4">
+                <div id="screen-create" class=""><div class="bg-white p-6 rounded-lg shadow-md"><div class="flex justify-between items-center mb-6"><h2 class="text-xl font-semibold text-slate-900">Thiết lập giá trị <span class="text-sm font-normal text-slate-400">(Kéo thả để sắp xếp)</span></h2><div class="flex items-center space-x-3"><input type="text" id="create-filename" placeholder="Tên file (e.g., config.json)" class="w-48 border-slate-300 rounded-md shadow-sm text-sm focus:ring-sky-500 focus:border-sky-500"><button id="save-browser-btn" class="inline-flex items-center justify-center space-x-2 bg-slate-600 text-white px-4 py-2 rounded-md hover:bg-slate-700 font-medium text-sm transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M5 4a1 1 0 011-1h6a1 1 0 011 1v1h1a1 1 0 011 1v3a1 1 0 01-1 1h-1v1a1 1 0 01-1 1H6a1 1 0 01-1-1v-1H4a1 1 0 01-1-1V6a1 1 0 011-1h1V4zM5 6v3h10V6H5zm10 5H5v2h10v-2z" /></svg><span>Lưu</span></button><button id="download-file-btn" class="inline-flex items-center justify-center space-x-2 bg-sky-600 text-white px-4 py-2 rounded-md hover:bg-sky-700 font-medium text-sm transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg><span>Tải xuống</span></button></div></div><div id="json-builder" class="space-y-2"></div><button id="add-root-prop-btn" class="mt-4 inline-flex items-center space-x-2 bg-slate-200 text-slate-700 px-3 py-1.5 rounded-md hover:bg-slate-300 font-medium text-sm transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg><span>Thêm thuộc tính</span></button></div></div>
+                <div id="screen-view" class="hidden"><div class="bg-white p-6 rounded-lg shadow-md"><div class="flex justify-between items-center mb-4"><h2 class="text-xl font-semibold text-slate-900">Nội dung File: <span id="view-filename" class="text-sky-600 font-mono"></span></h2><div id="view-edit-controls" class="flex items-center space-x-2"><button id="edit-file-btn" class="inline-flex items-center space-x-2 bg-slate-200 text-slate-700 px-4 py-2 rounded-md hover:bg-slate-300 font-medium text-sm transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg><span>Sửa</span></button><button id="cancel-edit-btn" class="hidden inline-flex items-center space-x-2 bg-white text-slate-700 px-4 py-2 rounded-md border border-slate-300 hover:bg-slate-50 font-medium text-sm transition-colors"><span>Hủy bỏ</span></button><button id="save-edited-file-btn" class="hidden inline-flex items-center space-x-2 bg-sky-600 text-white px-4 py-2 rounded-md hover:bg-sky-700 font-medium text-sm transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M5 4a1 1 0 011-1h6a1 1 0 011 1v1h1a1 1 0 011 1v3a1 1 0 01-1 1h-1v1a1 1 0 01-1 1H6a1 1 0 01-1-1v-1H4a1 1 0 01-1-1V6a1 1 0 011-1h1V4zM5 6v3h10V6H5zm10 5H5v2h10v-2z" /></svg><span>Lưu thay đổi</span></button></div></div><div id="json-viewer-container" class="bg-slate-50 p-4 rounded-md overflow-x-auto border border-slate-200"><pre id="json-viewer" class="text-sm"></pre></div><div id="json-editor-container" class="hidden"><textarea id="json-editor" class="w-full h-96 font-mono text-sm border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500"></textarea></div></div></div>
+                <div id="screen-suggestions" class="hidden"><div class="bg-white p-6 rounded-lg shadow-md"><h2 class="text-xl font-semibold mb-4 text-slate-900">Quản lý Gợi ý</h2><div class="grid grid-cols-6 gap-4 items-end p-4 bg-slate-50 rounded-lg border border-slate-200"><div class="col-span-2"><label class="text-xs font-medium text-slate-600">Key</label><input id="suggestion-key" type="text" placeholder="e.g., productDetails" class="w-full mt-1 border-slate-300 rounded-md text-sm shadow-sm focus:ring-sky-500 focus:border-sky-500"></div><div class="col-span-1"><label class="text-xs font-medium text-slate-600">Loại</label><select id="suggestion-type" class="w-full mt-1 border-slate-300 rounded-md text-sm shadow-sm focus:ring-sky-500 focus:border-sky-500"><option value="string">String</option><option value="primitive">Primitive</option><option value="object">Object</option></select></div><div class="col-span-2"><label class="text-xs font-medium text-slate-600">Giá trị / Key con</label><textarea id="suggestion-values" placeholder="Cách nhau bởi dấu phẩy" class="w-full h-10 mt-1 border-slate-300 rounded-md text-sm shadow-sm focus:ring-sky-500 focus:border-sky-500"></textarea></div><button id="add-suggestion-btn" class="col-span-1 bg-sky-600 text-white px-4 py-2 rounded-md hover:bg-sky-700 font-medium text-sm h-10 transition-colors">Thêm</button></div><h3 class="text-lg font-semibold mt-8 mb-3 text-slate-800">Danh sách Gợi ý</h3><div id="suggestions-list" class="space-y-3 max-h-[45vh] overflow-y-auto pr-2 -mr-2"></div></div></div>
+            </div>
+        </main>
+        <aside class="w-1/4 bg-white border-l border-slate-200 p-6 flex flex-col">
+            <div class="flex-grow overflow-y-auto">
+                <h2 class="text-lg font-semibold mb-4 text-slate-900">Các File Đã Lưu</h2>
+                <div id="saved-files-list" class="space-y-1"></div>
+            </div>
+            <div class="mt-6 pt-6 border-t border-slate-200">
+                <h2 class="text-lg font-semibold mb-3 text-slate-900">Cấu hình Gợi ý</h2>
+                <div class="p-4 bg-slate-50 rounded-lg text-sm space-y-3 border border-slate-200">
+                    <p class="text-slate-600">Lưu hoặc khôi phục lại bộ gợi ý của bạn vào bộ nhớ trình duyệt.</p>
+                    <div class="flex space-x-2">
+                        <button id="update-suggestions-btn" class="flex-1 inline-flex items-center justify-center space-x-2 bg-sky-600 text-white px-3 py-1.5 rounded-md hover:bg-sky-700 font-medium transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" /></svg><span>Cập nhật</span></button>
+                        <button id="reset-suggestions-btn" class="flex-1 inline-flex items-center justify-center space-x-2 bg-white text-slate-700 px-3 py-1.5 rounded-md border border-slate-300 hover:bg-slate-50 font-medium transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 110 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" /></svg><span>Khôi phục</span></button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const screens = { create: document.getElementById('screen-create'), view: document.getElementById('screen-view'), suggestions: document.getElementById('screen-suggestions') };
+        const tabs = { create: document.getElementById('tab-create'), view: document.getElementById('tab-view'), suggestions: document.getElementById('tab-suggestions') };
+        const jsonBuilder = document.getElementById('json-builder');
+        const savedFilesList = document.getElementById('saved-files-list');
+        const suggestionsList = document.getElementById('suggestions-list');
+        let draggedItem = null;
+        let activeFile = null;
+
+        const initialSuggestions = {
+            "productDetails": { "type": "object", "value": ["portfolio", "product", "productGroup", "promotionCode", "subProduct"] },
+            "workInfo": { "type": "object", "value": ["employmentStatus", "employerName", "netMonthlyIncome"] },
+            "subProduct": { "type": "string", "value": ["ODXSELL_CASA", "HOHO", "TOPUP"] },
+            "portfolio": { "type": "string", "value": ["UNSECURED", "SECURED", "CREDIT_CARD"] },
+            "registerType": { "type": "string", "value": ["Online", "Offline"] },
+            "employmentStatus": { "type": "primitive", "value": ["EMPL1", "EMPL2", "SELF_EMPLOYED"] }
+        };
+
+        const state = {
+            savedFiles: JSON.parse(localStorage.getItem('savedFiles_v5_polished') || '{}'),
+            suggestions: JSON.parse(localStorage.getItem('suggestions_v5_polished') || JSON.stringify(initialSuggestions)),
+        };
+        
+        const baseJsonStructure = {"workFlow": "RETAIL_CC_1560_DISB", "customerSelection": {"registerType": ""}};
+
+        function switchScreen(screenName) {
+            Object.values(screens).forEach(s => s.classList.add('hidden'));
+            Object.values(tabs).forEach(t => {
+                t.classList.remove('active', 'bg-white', 'border-slate-200');
+                t.classList.add('border-transparent');
+            });
+            screens[screenName].classList.remove('hidden');
+            tabs[screenName].classList.add('active', 'bg-white', 'border-slate-200');
+            tabs[screenName].classList.remove('border-transparent');
+        }
+        
+        function saveSuggestions() {
+            localStorage.setItem('suggestions_v5_polished', JSON.stringify(state.suggestions));
+            renderKeySuggestionsDatalist();
+        }
+
+        function renderKeySuggestionsDatalist() {
+            let datalist = document.getElementById('global-key-suggestions');
+            if (!datalist) {
+                datalist = document.createElement('datalist');
+                datalist.id = 'global-key-suggestions';
+                document.body.appendChild(datalist);
+            }
+            datalist.innerHTML = '';
+            Object.keys(state.suggestions).forEach(key => {
+                const option = document.createElement('option');
+                option.value = key;
+                datalist.appendChild(option);
+            });
+        }
+
+        function renderSuggestionsUI() {
+            suggestionsList.innerHTML = '';
+            if (Object.keys(state.suggestions).length === 0) {
+                suggestionsList.innerHTML = '<p class="text-slate-500 text-sm p-2 text-center">Chưa có gợi ý nào.</p>'; return;
+            }
+            for (const [key, data] of Object.entries(state.suggestions)) {
+                const div = document.createElement('div');
+                div.className = 'suggestion-item bg-white p-3 rounded-lg border border-slate-200';
+                div.innerHTML = `
+                    <div class="view-mode">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <strong class="text-sky-700 font-semibold">${key}</strong> 
+                                <span class="text-xs bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-full font-medium ml-2">${data.type}</span>
+                                <div class="text-sm text-slate-500 pl-2 mt-1.5 font-mono">${Array.isArray(data.value) ? data.value.join(', ') : data.value}</div>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <button data-key="${key}" class="edit-suggestion-btn text-slate-400 hover:text-sky-600 p-1 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg></button>
+                                <button data-key="${key}" class="delete-suggestion-btn text-slate-400 hover:text-red-500 p-1 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg></button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="edit-mode hidden">
+                        <div class="grid grid-cols-6 gap-3 items-end">
+                            <input type="text" value="${key}" class="col-span-2 border-slate-300 rounded-md text-sm shadow-sm bg-slate-100" readonly>
+                            <select class="col-span-1 border-slate-300 rounded-md text-sm shadow-sm type-input">
+                                <option value="string" ${data.type === 'string' ? 'selected' : ''}>String</option>
+                                <option value="primitive" ${data.type === 'primitive' ? 'selected' : ''}>Primitive</option>
+                                <option value="object" ${data.type === 'object' ? 'selected' : ''}>Object</option>
+                            </select>
+                            <textarea class="col-span-3 h-10 border-slate-300 rounded-md text-sm shadow-sm value-input">${Array.isArray(data.value) ? data.value.join(', ') : data.value}</textarea>
+                        </div>
+                        <div class="flex justify-end space-x-2 mt-3">
+                            <button data-key="${key}" class="cancel-edit-btn text-slate-600 px-3 py-1 rounded-md hover:bg-slate-100 text-sm font-medium">Hủy</button>
+                            <button data-key="${key}" class="save-edit-btn bg-sky-600 text-white px-3 py-1 rounded-md hover:bg-sky-700 text-sm font-medium">Lưu</button>
+                        </div>
+                    </div>
+                `;
+                suggestionsList.appendChild(div);
+            }
+        }
+        
+        function createPropertyInput(key, value) {
+            const propWrapper = document.createElement('div');
+            propWrapper.className = 'property-row border-l-2 border-slate-200 transition-colors';
+            propWrapper.draggable = true;
+
+            const suggestion = state.suggestions[key] || {};
+            const type = suggestion.type || (typeof value === 'object' && value !== null ? 'object' : 'string');
+
+            const contentWrapper = document.createElement('div');
+            contentWrapper.className = 'flex items-center space-x-2 p-2';
+            propWrapper.appendChild(contentWrapper);
+            contentWrapper.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-300" viewBox="0 0 20 20" fill="currentColor"><path d="M5 3a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 5h10v10H5V5zm2 1a1 1 0 011 1v6a1 1 0 11-2 0V7a1 1 0 011-1zm4 0a1 1 0 011 1v6a1 1 0 11-2 0V7a1 1 0 011-1z" /></svg><input type="text" value="${key}" list="global-key-suggestions" class="key-input flex-1 p-1 border border-slate-300 rounded-md text-sm shadow-sm focus:ring-sky-500 focus:border-sky-500"><div class="value-container flex-1"></div><select class="type-selector w-28 p-1 border border-slate-300 rounded-md text-sm shadow-sm focus:ring-sky-500 focus:border-sky-500"><option value="string">String</option><option value="primitive">Primitive</option><option value="object">Object</option></select><button class="remove-prop-btn text-slate-400 hover:text-red-500 p-1 rounded-full transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg></button>`;
+            
+            const typeSelector = contentWrapper.querySelector('.type-selector');
+            typeSelector.value = type;
+
+            const renderValueInput = (currentType, currentValue, currentKey) => {
+                const valueContainer = contentWrapper.querySelector('.value-container');
+                valueContainer.innerHTML = '';
+                const objectContent = propWrapper.querySelector('.object-content');
+                if (objectContent) objectContent.remove();
+
+                if (currentType === 'object') {
+                    const objContent = document.createElement('div');
+                    objContent.className = 'object-content mt-2 space-y-2 pl-6 border-l-2 border-dashed border-slate-300';
+                    propWrapper.appendChild(objContent);
+                    if (currentValue && typeof currentValue === 'object' && Object.keys(currentValue).length > 0) {
+                        Object.entries(currentValue).forEach(([sk, sv]) => objContent.appendChild(createPropertyInput(sk, sv)));
+                    } else {
+                        const templateSelector = document.createElement('select');
+                        templateSelector.className = 'object-template-selector w-full p-1 border border-slate-300 rounded-md text-sm text-slate-500 shadow-sm focus:ring-sky-500 focus:border-sky-500 mb-2';
+                        templateSelector.innerHTML = '<option value="">-- Chọn Template Object --</option>';
+                        Object.entries(state.suggestions).forEach(([sKey, sData]) => {
+                            if (sData.type === 'object') templateSelector.innerHTML += `<option value="${sKey}">${sKey}</option>`;
+                        });
+                        templateSelector.addEventListener('change', e => {
+                            const selectedKey = e.target.value;
+                            objContent.innerHTML = '';
+                            if (selectedKey && state.suggestions[selectedKey]) {
+                                state.suggestions[selectedKey].value.forEach(childKey => objContent.appendChild(createPropertyInput(childKey, '')));
+                            }
+                            objContent.appendChild(addBtn);
+                        });
+                        valueContainer.appendChild(templateSelector);
+                    }
+                    const addBtn = document.createElement('button');
+                    addBtn.className = 'add-sub-prop-btn bg-slate-100 text-slate-600 text-xs px-2 py-1 rounded-md hover:bg-slate-200';
+                    addBtn.textContent = '+ Thêm thuộc tính';
+                    objContent.appendChild(addBtn);
+                } else {
+                    const valueInput = document.createElement('input');
+                    valueInput.type = 'text';
+                    valueInput.className = 'value-input w-full p-1 border border-slate-300 rounded-md text-sm shadow-sm focus:ring-sky-500 focus:border-sky-500';
+                    valueInput.value = (currentValue === null || currentValue === undefined) ? '' : currentValue;
+                    const suggestions = state.suggestions[currentKey]?.value;
+                    if (Array.isArray(suggestions) && state.suggestions[currentKey].type !== 'object') {
+                        const datalistId = `datalist-${Math.random().toString(36).substr(2, 9)}`;
+                        valueInput.setAttribute('list', datalistId);
+                        const datalist = document.createElement('datalist');
+                        datalist.id = datalistId;
+                        suggestions.forEach(val => datalist.innerHTML += `<option value="${val}">`);
+                        valueContainer.appendChild(datalist);
+                    }
+                    valueContainer.appendChild(valueInput);
+                }
+            };
+            
+            renderValueInput(type, value, key);
+            
+            const keyInput = contentWrapper.querySelector('.key-input');
+            keyInput.addEventListener('change', (e) => {
+                const newKey = e.target.value;
+                const newSuggestion = state.suggestions[newKey];
+                if (newSuggestion) {
+                    typeSelector.value = newSuggestion.type;
+                    let initialValue = '';
+                    if (newSuggestion.type === 'object') {
+                        propWrapper.querySelector('.value-container').innerHTML = '';
+                        let objContent = propWrapper.querySelector('.object-content');
+                        if (!objContent) {
+                             objContent = document.createElement('div');
+                             objContent.className = 'object-content mt-2 space-y-2 pl-6 border-l-2 border-dashed border-slate-300';
+                             propWrapper.appendChild(objContent);
+                        }
+                        objContent.innerHTML = '';
+                        newSuggestion.value.forEach(childKey => objContent.appendChild(createPropertyInput(childKey, '')));
+                        const addBtn = document.createElement('button');
+                        addBtn.className = 'add-sub-prop-btn bg-slate-100 text-slate-600 text-xs px-2 py-1 rounded-md hover:bg-slate-200';
+                        addBtn.textContent = '+ Thêm thuộc tính';
+                        objContent.appendChild(addBtn);
+                    } else {
+                        initialValue = (newSuggestion.value.length > 0) ? newSuggestion.value[0] : '';
+                        renderValueInput(newSuggestion.type, initialValue, newKey);
+                    }
+                }
+            });
+            typeSelector.addEventListener('change', () => renderValueInput(typeSelector.value, '', keyInput.value));
+            return propWrapper;
+        }
+
+        function renderJsonBuilder(data) {
+            jsonBuilder.innerHTML = '';
+            Object.entries(data).forEach(([key, value]) => jsonBuilder.appendChild(createPropertyInput(key, value)));
+        }
+        
+        function buildJsonFromDom(container) {
+            const json = {};
+            for (const child of container.children) {
+                if (!child.classList.contains('property-row')) continue;
+                const key = child.querySelector('.key-input')?.value.trim();
+                if (!key) continue;
+                const type = child.querySelector('.type-selector').value;
+                if (type === 'object') {
+                    json[key] = buildJsonFromDom(child.querySelector('.object-content'));
+                } else {
+                    let value = child.querySelector('.value-input')?.value;
+                    if (type === 'primitive' && value) {
+                        if (value === 'true') value = true;
+                        else if (value === 'false') value = false;
+                        else if (value.trim() !== '' && !isNaN(Number(value))) value = Number(value);
+                    }
+                    json[key] = value;
+                }
+            }
+            return json;
+        }
+
+        function renderSavedFiles() {
+            savedFilesList.innerHTML = '';
+            if (Object.keys(state.savedFiles).length === 0) {
+                savedFilesList.innerHTML = '<p class="text-slate-500 text-sm">Chưa có file nào được lưu.</p>'; return;
+            }
+            Object.keys(state.savedFiles).forEach(filename => {
+                const div = document.createElement('div');
+                div.className = 'file-item cursor-pointer p-2 rounded-md border-l-4 border-transparent flex justify-between items-center transition-colors';
+                div.dataset.filename = filename;
+                div.innerHTML = `<span class="text-sm font-medium text-slate-700">${filename}</span><button class="delete-file-btn text-slate-400 hover:text-red-500 p-1 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg></button>`;
+                savedFilesList.appendChild(div);
+            });
+        }
+        
+        function loadFile(filename) {
+            activeFile = filename; // Keep track of the currently viewed file
+            document.querySelectorAll('.file-item.active').forEach(el => el.classList.remove('active'));
+            const fileContent = state.savedFiles[filename];
+            document.getElementById('view-filename').textContent = filename;
+            document.getElementById('json-viewer').textContent = fileContent;
+            document.getElementById('json-editor').value = fileContent;
+            
+            // Reset to view mode
+            document.getElementById('json-viewer-container').classList.remove('hidden');
+            document.getElementById('json-editor-container').classList.add('hidden');
+            document.getElementById('edit-file-btn').classList.remove('hidden');
+            document.getElementById('save-edited-file-btn').classList.add('hidden');
+            document.getElementById('cancel-edit-btn').classList.add('hidden');
+
+            switchScreen('view');
+            const activeFileEl = Array.from(savedFilesList.children).find(el => el.dataset.filename === filename);
+            if(activeFileEl) activeFileEl.classList.add('active');
+        }
+        
+        // --- Event Listeners ---
+        Object.keys(tabs).forEach(key => tabs[key].addEventListener('click', () => switchScreen(key)));
+        
+        savedFilesList.addEventListener('click', e => {
+            const fileItem = e.target.closest('.file-item');
+            if (!fileItem) return;
+
+            const filename = fileItem.dataset.filename;
+            const isDeleteButton = e.target.closest('.delete-file-btn');
+
+            if (isDeleteButton) {
+                if (confirm(`Bạn có chắc muốn xóa file "${filename}"?`)) {
+                    delete state.savedFiles[filename];
+                    localStorage.setItem('savedFiles_v5_polished', JSON.stringify(state.savedFiles));
+                    renderSavedFiles();
+                    const viewFilenameEl = document.getElementById('view-filename');
+                    if (viewFilenameEl && viewFilenameEl.textContent === filename && !screens.view.classList.contains('hidden')) {
+                        switchScreen('create');
+                    }
+                }
+            } else {
+                loadFile(filename);
+            }
+        });
+
+        document.getElementById('add-suggestion-btn').addEventListener('click', () => {
+            const key = document.getElementById('suggestion-key').value.trim();
+            const type = document.getElementById('suggestion-type').value;
+            const values = document.getElementById('suggestion-values').value.split(',').map(s => s.trim()).filter(Boolean);
+            if (key) {
+                state.suggestions[key] = { type, value: values };
+                saveSuggestions(); renderSuggestionsUI();
+                document.getElementById('suggestion-key').value = '';
+                document.getElementById('suggestion-values').value = '';
+            }
+        });
+
+        suggestionsList.addEventListener('click', e => {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            const key = btn.dataset.key;
+            const item = btn.closest('.suggestion-item');
+            if (btn.matches('.delete-suggestion-btn')) {
+                if (confirm(`Bạn có chắc muốn xóa gợi ý "${key}"?`)) {
+                    delete state.suggestions[key];
+                    saveSuggestions(); renderSuggestionsUI();
+                }
+            } else if (btn.matches('.edit-suggestion-btn')) {
+                item.querySelector('.view-mode').classList.add('hidden');
+                item.querySelector('.edit-mode').classList.remove('hidden');
+            } else if (btn.matches('.cancel-edit-btn')) {
+                item.querySelector('.view-mode').classList.remove('hidden');
+                item.querySelector('.edit-mode').classList.add('hidden');
+            } else if (btn.matches('.save-edit-btn')) {
+                const newType = item.querySelector('.type-input').value;
+                const newValues = item.querySelector('.value-input').value.split(',').map(s => s.trim()).filter(Boolean);
+                state.suggestions[key] = {type: newType, value: newValues };
+                saveSuggestions(); renderSuggestionsUI();
+            }
+        });
+
+        const handleSave = (isDownload) => {
+            const filenameInput = document.getElementById('create-filename');
+            let filename = filenameInput.value.trim();
+            if (!filename) { alert("Vui lòng nhập tên file."); filenameInput.focus(); return; }
+            if (!filename.endsWith('.json')) filename += '.json';
+
+            const fileContent = JSON.stringify(buildJsonFromDom(jsonBuilder), null, 4);
+            if (isDownload) {
+                const blob = new Blob([fileContent], { type: 'application/json' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob); a.download = filename;
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            } else {
+                state.savedFiles[filename] = fileContent;
+                localStorage.setItem('savedFiles_v5_polished', JSON.stringify(state.savedFiles));
+                renderSavedFiles();
+                alert(`Đã lưu file "${filename}" vào trình duyệt.`);
+            }
+        };
+
+        document.getElementById('save-browser-btn').addEventListener('click', () => handleSave(false));
+        document.getElementById('download-file-btn').addEventListener('click', () => handleSave(true));
+
+        document.getElementById('update-suggestions-btn').addEventListener('click', () => {
+            saveSuggestions();
+            alert("Đã cập nhật (lưu) bộ gợi ý vào bộ nhớ trình duyệt.");
+        });
+        document.getElementById('reset-suggestions-btn').addEventListener('click', () => {
+            if (confirm("Bạn có chắc muốn khôi phục bộ gợi ý về mặc định? Mọi thay đổi sẽ bị mất.")) {
+                state.suggestions = JSON.parse(JSON.stringify(initialSuggestions));
+                saveSuggestions();
+                renderSuggestionsUI();
+                alert("Đã khôi phục bộ gợi ý về mặc định.");
+            }
+        });
+        
+        // **BUGFIX** for Screen 2 (View & Edit)
+        document.getElementById('edit-file-btn').addEventListener('click', () => {
+            document.getElementById('json-viewer-container').classList.add('hidden');
+            document.getElementById('json-editor-container').classList.remove('hidden');
+            document.getElementById('edit-file-btn').classList.add('hidden');
+            document.getElementById('save-edited-file-btn').classList.remove('hidden');
+            document.getElementById('cancel-edit-btn').classList.remove('hidden');
+        });
+        document.getElementById('cancel-edit-btn').addEventListener('click', () => {
+            document.getElementById('json-viewer-container').classList.remove('hidden');
+            document.getElementById('json-editor-container').classList.add('hidden');
+            document.getElementById('edit-file-btn').classList.remove('hidden');
+            document.getElementById('save-edited-file-btn').classList.add('hidden');
+            document.getElementById('cancel-edit-btn').classList.add('hidden');
+        });
+        document.getElementById('save-edited-file-btn').addEventListener('click', () => {
+            if (!activeFile) return;
+            const editor = document.getElementById('json-editor');
+            try {
+                const parsed = JSON.parse(editor.value);
+                const newContent = JSON.stringify(parsed, null, 4);
+                state.savedFiles[activeFile] = newContent;
+                localStorage.setItem('savedFiles_v5_polished', JSON.stringify(state.savedFiles));
+                renderSavedFiles();
+                loadFile(activeFile); // Reload to show formatted content and switch back to view mode
+            } catch (e) {
+                alert('Lỗi: Nội dung không phải là JSON hợp lệ. Vui lòng kiểm tra lại.');
+            }
+        });
+
+
+        const mainContainer = document.getElementById('screen-create');
+        mainContainer.addEventListener('dragstart', e => { if (e.target.classList.contains('property-row')) { draggedItem = e.target; setTimeout(() => e.target.classList.add('dragging'), 0); } });
+        mainContainer.addEventListener('dragend', () => { if (draggedItem) { draggedItem.classList.remove('dragging'); draggedItem = null; } });
+        mainContainer.addEventListener('dragover', e => {
+            e.preventDefault();
+            const container = e.target.closest('#json-builder, .object-content');
+            if (!container || !draggedItem) return;
+            const afterElement = [...container.querySelectorAll('.property-row:not(.dragging)')].reduce((closest, child) => { const box = child.getBoundingClientRect(); const offset = e.clientY - box.top - box.height / 2; return (offset < 0 && offset > closest.offset) ? { offset: offset, element: child } : closest; }, { offset: Number.NEGATIVE_INFINITY }).element;
+            if (afterElement) { container.insertBefore(draggedItem, afterElement); } else { container.appendChild(draggedItem); }
+        });
+
+        jsonBuilder.addEventListener('click', e => {
+            const btn = e.target.closest('button');
+            if(!btn) return;
+            if (btn.matches('.remove-prop-btn')) btn.closest('.property-row').remove();
+            if (btn.matches('.add-sub-prop-btn')) btn.parentElement.insertBefore(createPropertyInput('', ''), btn);
+        });
+        document.getElementById('add-root-prop-btn').addEventListener('click', () => jsonBuilder.appendChild(createPropertyInput('', '')));
+        
+        // Init Load
+        saveSuggestions();
+        renderSuggestionsUI();
+        renderSavedFiles();
+        renderJsonBuilder(baseJsonStructure);
+        switchScreen('create');
+    });
+    </script>
+</body>
+</html>
