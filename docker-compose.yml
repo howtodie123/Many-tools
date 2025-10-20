@@ -1,0 +1,7 @@
+services:
+  excel_search_tool:
+    build: .
+    container_name: excel_search_tool
+    ports:
+      - "8081:80"
+    restart: unless-stopped
